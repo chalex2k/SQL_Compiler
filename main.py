@@ -3,9 +3,10 @@ import myparser
 
 
 def main():
-    prog = myparser.parse ('''
-        SELECT name 
-        FROM students lecturer  managers
+    prog = myparser.parse(
+        '''
+        SELECT DISTINCT * |
+               FROM students;
         ''')
     print(*prog.tree, sep=os.linesep)
 

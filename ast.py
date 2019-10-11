@@ -47,17 +47,24 @@ class TableNode(AstNode):
     def __str__(self)->str:
         return self.table_name
 
+class StarNode(AstNode):
+    def __init__(self):
+        super().__init__()
+
+    def __str__(self):
+        return "*"
 
 class SelectNode(AstNode):
-    def __init__(self, col: ColumnNode):
+    def __init__(self, distinct: bool, col: Union[Tuple[ColumnNode], Tuple[StarNode]]):
         self.col = col
+        self.distinct = distinct
 
     @property
     def childs(self) -> Tuple[ColumnNode]:
-        return self.col,
+        return self.col
 
     def __str__(self)->str:
-        return 'SELECT'
+        return 'SELECT' if not self.distinct else "SELECT DISTINCT"
 
 
 class FromNode(AstNode):
@@ -66,7 +73,7 @@ class FromNode(AstNode):
 
     @property
     def childs(self) -> Tuple[TableNode]:
-        return self.arg
+        return self.arg,
 
     def __str__(self)->str:
         return 'FROM'
