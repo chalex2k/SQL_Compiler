@@ -14,10 +14,9 @@ def make_parser():
     table_name = ppc.identifier
     FROM = pp.Keyword('FROM')
     DISTINCT = pp.Keyword('DISTINCT')
-    from_node = FROM + table_name + ';' #pp.ZeroOrMore(table_name)
-    select_node = SELECT + pp.Optional(DISTINCT) + ((col_name + pp.ZeroOrMore(',' + col_name)) | (star)) + '|'
-
-    query = select_node + from_node
+    from_node = FROM + table_name + pp.ZeroOrMore(',' + table_name)
+    select_node = SELECT + pp.Optional(DISTINCT) + ((col_name + pp.ZeroOrMore(',' + col_name)) | (star))
+    query = select_node + from_node + ';'
     start = query
 
 
@@ -45,13 +44,10 @@ def make_parser():
             parser.setParseAction(star_action)
         elif rule_name == 'select_node':
             def select_action(s, loc, tocs):
-                for sep_pos, i in enumerate(tocs):
-                    if i == '|':
-                        break
                 if tocs[1] == 'DISTINCT':
-                    node = SelectNode(True, tocs[2:sep_pos:2])
+                    node = SelectNode(True, tocs[2::2])
                 else:
-                    node = SelectNode(False, tocs[1:sep_pos:2])
+                    node = SelectNode(False, tocs[1::2])
                 return node
             parser.setParseAction(select_action)
         elif rule_name == 'query':
