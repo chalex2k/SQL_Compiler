@@ -68,15 +68,43 @@ class SelectNode(AstNode):
 
 
 class FromNode(AstNode):
-    def __init__(self, *table: Tuple[TableNode]):
-        self.arg = (table[0])
+    def __init__(self, table: Tuple[TableNode]):
+        self.arg = table
 
     @property
     def childs(self) -> Tuple[TableNode]:
-        return self.arg,
+        return self.arg
 
     def __str__(self)->str:
         return 'FROM'
+
+class OnNode(AstNode):
+    def __init__(self, col1: ColumnNode, col2: ColumnNode):
+        self.col1 = col1
+        self.col2 = col2
+
+    @property
+    def childs(self) -> Tuple[ColumnNode]:
+        return (self.col1, self.col2)
+
+    def __str__(self):
+        return "ON"
+
+
+class JoinNode(AstNode):
+    def __init__(self, value: str, table1: TableNode, table2: TableNode, on: OnNode ):
+        self.value = value
+        self.table1 = table1
+        self.table2 = table2
+        self.on = on
+
+    @property
+    def childs(self) -> (TableNode, TableNode, OnNode):
+        return (self.table1, self.table2, self.on)
+
+    def __str__(self)->str:
+        return self.value
+
 
 
 class QueryNode(AstNode):
