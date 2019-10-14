@@ -106,16 +106,68 @@ class JoinNode(AstNode):
         return self.value
 
 
+class OpBlockNode(AstNode):
+    def __init__(self, sign: str, col_nodes: Tuple[ColumnNode]):
+        self.sign = sign
+        self.arg = col_nodes
+        super().__init__()
+
+    @property
+    def childs(self) -> Tuple[ColumnNode]:
+        return self.arg
+
+    def __str__(self):
+        return self.sign
+
+
+class AndBlockNode(AstNode):
+    def __init__(self, op_block_nodes: Tuple[OpBlockNode]):
+        self.arg = op_block_nodes
+
+    @property
+    def childs(self) -> Tuple[OpBlockNode]:
+        return self.arg
+
+    def __str__(self):
+        return "AND"
+
+class OrNode(AstNode):
+    def __init__(self, and_nodes: Tuple[AndBlockNode] ):
+        self.arg = and_nodes
+
+    @property
+    def childs(self) -> Tuple[AndBlockNode]:
+        return self.arg
+
+    def __str__(self)->str:
+        return "OR"
+
+class WhereNode(AstNode):
+    def __init__(self, or_nodes: Tuple[OrNode]):
+        self.arg = or_nodes
+
+    @property
+    def childs(self) -> Tuple[OrNode]:
+        return self.arg
+
+    def __str__(self)->str:
+        return 'WHERE'
+
+
 
 class QueryNode(AstNode):
-    def __init__(self, select: SelectNode, from_: FromNode):
+    def __init__(self, select: SelectNode, from_: FromNode, where: WhereNode = None):
         super().__init__()
         self.select = select
         self.from_ = from_
+        self.where = where
 
     @property
     def childs(self) -> Tuple[SelectNode, FromNode]:
-        return self.select, self.from_
+        if self.where is None:
+            return self.select, self.from_
+        else:
+            return self.select, self.from_, self.where
 
     def __str__(self)->str:
         return str("query")

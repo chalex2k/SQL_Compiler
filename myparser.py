@@ -9,8 +9,15 @@ from ast import *
 
 def make_parser():
     col_name = ppc.identifier
-    star = pp.Word('*')
-    eq = pp.Word('=')
+    star = pp.Literal('*')
+    eq = pp.Literal('=')
+    gr = pp.Literal('>')
+    less = pp.Literal('<')
+    gr_or_eq = pp.Literal('>=')
+    less_or_eq = pp.Literal('<=')
+    not_eq = pp.Literal('<>')
+    LPAR, RPAR = pp.Literal('(').suppress(), pp.Literal(')').suppress()
+
     SELECT = pp.Keyword("SELECT")
     JOIN = pp.Keyword('JOIN')
     ON = pp.Keyword('ON')
@@ -31,7 +38,15 @@ def make_parser():
     DISTINCT = pp.Keyword('DISTINCT')
     from_node = FROM + pp.Group(pp.delimitedList(join_node | table_name ))  #table_name + pp.ZeroOrMore(',' + table_name)
     select_node = SELECT + pp.Optional(DISTINCT) + ((pp.Group(pp.delimitedList(col_name))) | (star)) # col_name + pp.ZeroOrMore(',' + col_name)
-    query = select_node + from_node + ';'
+    WHERE = pp.Keyword('WHERE')
+    AND = pp.Keyword('AND')
+    OR = pp.Keyword('OR')
+    op_block = col_name + (gr_or_eq | less_or_eq | not_eq | eq | gr | less) + col_name
+    and_block = op_block + pp.ZeroOrMore(AND + op_block)
+    or_block = and_block + pp.ZeroOrMore(OR + and_block)
+
+    where_node = WHERE + or_block
+    query = select_node + from_node + pp.Optional(where_node) + ';'
     start = query
 
 
@@ -72,7 +87,10 @@ def make_parser():
             parser.setParseAction(select_action)
         elif rule_name == 'query':
             def query_action(s, loc, tocs):
-                node = QueryNode(tocs[0], tocs[1])
+                if isinstance(tocs[2], WhereNode):
+                    node = QueryNode(tocs[0], tocs[1], tocs[2])
+                else:
+                    node = QueryNode(tocs[0], tocs[1])
                 return node
             parser.setParseAction(query_action)
         elif rule_name == 'from_node':
@@ -99,6 +117,31 @@ def make_parser():
                     node = JoinNode('FULL OUTER JOIN', tocs[0], tocs[4], tocs[5])
                 return node
             parser.setParseAction(join_action)
+
+        elif rule_name == 'op_block':
+            def op_action(s, loc, tocs):
+                node = OpBlockNode(tocs[1], (tocs[0], tocs[2]))  # Почему то приходят таблицы, а не столбцы
+                return node
+            parser.setParseAction(op_action)
+
+        elif rule_name == 'and_block':
+            def and_action(s, loc, tocs):
+                node = AndBlockNode(tocs[::2])
+                return node
+            parser.setParseAction(and_action)
+
+        elif rule_name == 'or_block':
+            def or_action(s, loc, tocs):
+                node = OrNode(tocs[::2])
+                return node
+            parser.setParseAction(or_action)
+
+        elif rule_name == 'where_node':
+            def where_action(s, loc, tocs):
+                node = WhereNode(tocs[1:])
+                return node
+            parser.setParseAction(where_action)
+
 
     for var_name, value in locals().copy().items():
         if isinstance(value, pp.ParserElement):
