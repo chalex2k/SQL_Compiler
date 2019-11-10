@@ -8,17 +8,45 @@ from ast import *
 
 
 def make_parser():
-    col_name = ppc.identifier
+
+    #"Грамматика блока SELECT"
+
+    col_name = ppc.identifier  #ColumnNode
+    num_const = ppc.fnumber     #NumNode
+    inverted_comma = pp.Literal('\'')
+    str_const = inverted_comma + pp.Word(pp.alphas) + inverted_comma   # ?????     StrNode
+    LPAR, RPAR = pp.Literal('(').suppress(), pp.Literal(')').suppress()
+    MULT, ADD, CONC = pp.oneOf(('* /')), pp.oneOf(('+ -')), pp.Literal('||')
+
+    add = pp.Forward()
+    group_num = col_name | num_const | LPAR + add + RPAR
+    mult = group_num + pp.ZeroOrMore(MULT + group_num)
+    add << mult + pp.ZeroOrMore(ADD + mult)
+
+    conc = pp.Forward()
+    group_str = str_const | col_name | LPAR + conc + RPAR
+    conc << group_str + pp.ZeroOrMore(CONC + group_str)
+
+    select_expr = add | conc
+
     star = pp.Literal('*')
+
+    SELECT = pp.Keyword("SELECT")
+    DISTINCT = pp.Keyword('DISTINCT')
+    select_node = SELECT + pp.Optional(DISTINCT) + (
+                (pp.Group(pp.delimitedList(select_expr))) | (star))  # col_name + pp.ZeroOrMore(',' + col_name)
+
+#**********************************************************************************************************
+
     eq = pp.Literal('=')
     gr = pp.Literal('>')
     less = pp.Literal('<')
     gr_or_eq = pp.Literal('>=')
     less_or_eq = pp.Literal('<=')
     not_eq = pp.Literal('<>')
-    LPAR, RPAR = pp.Literal('(').suppress(), pp.Literal(')').suppress()
 
-    SELECT = pp.Keyword("SELECT")
+
+
     JOIN = pp.Keyword('JOIN')
     ON = pp.Keyword('ON')
     OUTER = pp.Keyword('OUTER')
@@ -35,9 +63,10 @@ def make_parser():
     on_node = ON + col_name + eq + col_name
     join_node = table_name + (INNER_JOIN | LEFT_OUTER_JOIN | RIGHT_OUTER_JOIN | FULL_OUTER_JOIN | JOIN) + table_name + on_node
     FROM = pp.Keyword('FROM')
-    DISTINCT = pp.Keyword('DISTINCT')
+
     from_node = FROM + pp.Group(pp.delimitedList(join_node | table_name ))  #table_name + pp.ZeroOrMore(',' + table_name)
-    select_node = SELECT + pp.Optional(DISTINCT) + ((pp.Group(pp.delimitedList(col_name))) | (star)) # col_name + pp.ZeroOrMore(',' + col_name)
+
+
     WHERE = pp.Keyword('WHERE')
     AND = pp.Keyword('AND')
     OR = pp.Keyword('OR')
@@ -141,6 +170,36 @@ def make_parser():
                 node = WhereNode(tocs[1:])
                 return node
             parser.setParseAction(where_action)
+
+        elif rule_name == 'str_const':
+            def str_action(s, loc, tocs):
+                node = StrNode(tocs[1])
+                return node
+            parser.setParseAction(str_action)
+
+        elif rule_name == 'conc':
+            def conc_action(s, loc, tocs):
+                node = ConcNode(tocs[::2])
+                return node
+            parser.setParseAction(conc_action)
+
+        elif rule_name == 'add':
+            def add_action(s, loc, tocs):
+                node = AddNode(tocs[::2])
+                return node
+            parser.setParseAction(add_action)
+
+        elif rule_name == 'mult':
+            def mult_action(s, loc, tocs):
+                node = BinOpNode(tocs[::2])
+                return node
+            parser.setParseAction(mult_action)
+
+        elif rule_name == 'num_const':
+            def num_action(s, loc, tocs):
+                node = NumNode(tocs[0])
+                return node
+            parser.setParseAction(num_action)
 
 
     for var_name, value in locals().copy().items():

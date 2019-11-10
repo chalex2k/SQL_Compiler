@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import Callable, Tuple, Optional, Union
+from enum import Enum
 
 
 class AstNode(ABC):
@@ -38,6 +39,44 @@ class ColumnNode(AstNode):
     def __str__(self)->str:
         return self.col_name
 
+class NumNode(AstNode):
+    def __init__(self, num: float):
+        super().__init__()
+        self.num = float(num)
+
+    def __str__(self)->str:
+        return str(self.num)
+
+class StrNode(AstNode):
+    def __init__(self, string: str):
+        super().__init__()
+        self.string = str(string)
+
+    def __str__(self)->str:
+        return str(self.string)
+
+
+class BinOp(Enum):
+    ADD = '+'
+    SUB = '-'
+    MUL = '*'
+    DIV = '/'
+
+
+class BinOpNode(AstNode):
+    def __init__(self, op: BinOp, arg1: AstNode, arg2: AstNode):
+        super().__init__()
+        self.op = op
+        self.arg1 = arg1
+        self.arg2 = arg2
+
+    @property
+    def childs(self) -> Tuple[AstNode, AstNode]:
+        return self.arg1, self.arg2
+
+    def __str__(self)->str:
+        return str(self.op.value)
+
 
 class TableNode(AstNode):
     def __init__(self, table_name: str):
@@ -54,8 +93,22 @@ class StarNode(AstNode):
     def __str__(self):
         return "*"
 
+class AddNode(AstNode):
+    pass
+
+class ConcNode(AstNode):
+    def __init__(self, group: Tuple[AstNode]):
+        self.operans = group
+
+    @property
+    def childs(self) -> Tuple[AstNode]:
+        return self.operans
+
+    def __str__(self):
+        return "||"
+
 class SelectNode(AstNode):
-    def __init__(self, distinct: bool, col: Union[Tuple[ColumnNode], Tuple[StarNode]]):
+    def __init__(self, distinct: bool, col: Union[Tuple[AstNode], Tuple[StarNode]]): # кортеж состоящий из AddNode или ConcNode -ов
         self.col = col
         self.distinct = distinct
 
@@ -171,3 +224,4 @@ class QueryNode(AstNode):
 
     def __str__(self)->str:
         return str("query")
+
