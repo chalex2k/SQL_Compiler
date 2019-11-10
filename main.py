@@ -5,10 +5,7 @@ import myparser
 def main():
     prog = myparser.parse(
          '''
-SELECT DISTINCT name
-            FROM students 
-            WHERE name = surname OR
-             name > surname AND student_id <> mark_id AND rating >= min_r;
+SELECT  'dfv' || (dfdf || a), 2 - (4 -2) ;
 
         ''')
     print(*prog.tree, sep=os.linesep)

@@ -11,33 +11,33 @@ def make_parser():
 
     #"Грамматика блока SELECT"
 
-    col_name = ppc.identifier  #ColumnNode
-    num_const = ppc.fnumber     #NumNode
-    inverted_comma = pp.Literal('\'')
-    str_const = inverted_comma + pp.Word(pp.alphas) + inverted_comma   # ?????     StrNode
+    column = ppc.identifier
+    num = ppc.fnumber
+    INVERTED_COMMA = pp.Literal('\'')
+    str_const = INVERTED_COMMA + pp.Word(pp.alphas) + INVERTED_COMMA
     LPAR, RPAR = pp.Literal('(').suppress(), pp.Literal(')').suppress()
     MULT, ADD, CONC = pp.oneOf(('* /')), pp.oneOf(('+ -')), pp.Literal('||')
 
     add = pp.Forward()
-    group_num = col_name | num_const | LPAR + add + RPAR
+    group_num = column | num | LPAR + add + RPAR
     mult = group_num + pp.ZeroOrMore(MULT + group_num)
     add << mult + pp.ZeroOrMore(ADD + mult)
 
     conc = pp.Forward()
-    group_str = str_const | col_name | LPAR + conc + RPAR
+    group_str = str_const | column | LPAR + conc + RPAR
     conc << group_str + pp.ZeroOrMore(CONC + group_str)
 
-    select_expr = add | conc
+    select_expr = conc | add
 
     star = pp.Literal('*')
 
     SELECT = pp.Keyword("SELECT")
     DISTINCT = pp.Keyword('DISTINCT')
-    select_node = SELECT + pp.Optional(DISTINCT) + (
+    select = SELECT + pp.Optional(DISTINCT) + (
                 (pp.Group(pp.delimitedList(select_expr))) | (star))  # col_name + pp.ZeroOrMore(',' + col_name)
 
 #**********************************************************************************************************
-
+    """
     eq = pp.Literal('=')
     gr = pp.Literal('>')
     less = pp.Literal('<')
@@ -60,7 +60,7 @@ def make_parser():
     FULL_OUTER_JOIN = FULL + OUTER + JOIN
     alias = ppc.identifier
     table_name = alias  #pp.delimitedList(alias , ".", combine=True)  #
-    on_node = ON + col_name + eq + col_name
+    on_node = ON + column + eq + column
     join_node = table_name + (INNER_JOIN | LEFT_OUTER_JOIN | RIGHT_OUTER_JOIN | FULL_OUTER_JOIN | JOIN) + table_name + on_node
     FROM = pp.Keyword('FROM')
 
@@ -70,21 +70,43 @@ def make_parser():
     WHERE = pp.Keyword('WHERE')
     AND = pp.Keyword('AND')
     OR = pp.Keyword('OR')
-    op_block = col_name + (gr_or_eq | less_or_eq | not_eq | eq | gr | less) + col_name
+    op_block = column + (gr_or_eq | less_or_eq | not_eq | eq | gr | less) + column
     and_block = op_block + pp.ZeroOrMore(AND + op_block)
     or_block = and_block + pp.ZeroOrMore(OR + and_block)
 
     where_node = WHERE + or_block
-    query = select_node + from_node + pp.Optional(where_node) + ';'
-    start = query
+    #query = select_node + from_node + pp.Optional(where_node) 
+  
+    query = select
+    """
+
+    start = select + ';'
 
 
     def set_parse_action_magic(rule_name: str, parser: pp.ParserElement)->None:
         if rule_name == rule_name.upper():
             return
+        if rule_name in ('mult', 'add', 'conc'):
+            def bin_op_parse_action(s, loc, tocs):
+                node = tocs[0]
+                d = list(tocs)
+                for i in range(1, len(tocs) - 1, 2):
+                    node = BinOpNode(BinOp(tocs[i]), node, tocs[i + 1])
+                return node
+            parser.setParseAction(bin_op_parse_action)
+        else:
+            cls = ''.join(x.capitalize() for x in rule_name.split('_')) + 'Node'
+            with suppress(NameError):
+                cls = eval(cls)
+                if not inspect.isabstract(cls):
+                    def parse_action(s, loc, tocs):
+                        return cls(*tocs)
+
+                    parser.setParseAction(parse_action)
+        '''
         if rule_name == 'col_name':
             def col_name_action(s, loc, tocs):
-                print('tocs len is ',len(tocs))
+                print('tocs len is ', len(tocs))
                 for i in range(10):
                     print(tocs[i])
                 node = ColumnNode(tocs[0])
@@ -173,7 +195,7 @@ def make_parser():
 
         elif rule_name == 'str_const':
             def str_action(s, loc, tocs):
-                node = StrNode(tocs[1])
+                node = StrConstNode(tocs[1])
                 return node
             parser.setParseAction(str_action)
 
@@ -200,6 +222,7 @@ def make_parser():
                 node = NumNode(tocs[0])
                 return node
             parser.setParseAction(num_action)
+        '''
 
 
     for var_name, value in locals().copy().items():

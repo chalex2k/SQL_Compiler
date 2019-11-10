@@ -47,8 +47,8 @@ class NumNode(AstNode):
     def __str__(self)->str:
         return str(self.num)
 
-class StrNode(AstNode):
-    def __init__(self, string: str):
+class StrConstNode(AstNode):
+    def __init__(self, l_par: str, string: str, rpar:str):
         super().__init__()
         self.string = str(string)
 
@@ -61,6 +61,7 @@ class BinOp(Enum):
     SUB = '-'
     MUL = '*'
     DIV = '/'
+    CON = '||'
 
 
 class BinOpNode(AstNode):
@@ -86,8 +87,11 @@ class TableNode(AstNode):
     def __str__(self)->str:
         return self.table_name
 
+class SelectExprNode(AstNode):
+    pass
+
 class StarNode(AstNode):
-    def __init__(self):
+    def __init__(self, star: str):
         super().__init__()
 
     def __str__(self):
@@ -107,10 +111,14 @@ class ConcNode(AstNode):
     def __str__(self):
         return "||"
 
+
 class SelectNode(AstNode):
-    def __init__(self, distinct: bool, col: Union[Tuple[AstNode], Tuple[StarNode]]): # кортеж состоящий из AddNode или ConcNode -ов
-        self.col = col
-        self.distinct = distinct
+    def __init__(self, *args): # 'SELECT' ['DISTINCT'] *|Tuple(...)
+        if type(args[-1]) == StarNode:
+            self.col = args[-1],
+        else:
+            self.col = args[-1]
+        self.distinct = len(args) == 3
 
     @property
     def childs(self) -> Tuple[ColumnNode]:
@@ -207,7 +215,7 @@ class WhereNode(AstNode):
         return 'WHERE'
 
 
-
+'''
 class QueryNode(AstNode):
     def __init__(self, select: SelectNode, from_: FromNode, where: WhereNode = None):
         super().__init__()
@@ -221,6 +229,18 @@ class QueryNode(AstNode):
             return self.select, self.from_
         else:
             return self.select, self.from_, self.where
+
+    def __str__(self)->str:
+        return str("query")
+'''
+class QueryNode(AstNode):
+    def __init__(self, select: SelectNode):
+        super().__init__()
+        self.select = select
+
+    @property
+    def childs(self) -> Tuple[SelectNode]:
+        return self.select,
 
     def __str__(self)->str:
         return str("query")
