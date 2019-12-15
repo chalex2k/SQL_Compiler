@@ -24,7 +24,7 @@ def make_parser():
     add << mult + pp.ZeroOrMore(ADD + mult)
 
     conc = pp.Forward()
-    group_str = str_const | column | LPAR + conc + RPAR
+    group_str = LPAR + conc + RPAR | str_const | column
     conc << group_str + pp.ZeroOrMore(CONC + group_str)
 
     select_expr = conc | add
@@ -36,16 +36,7 @@ def make_parser():
     select = SELECT + pp.Optional(DISTINCT) + (
                 (pp.Group(pp.delimitedList(select_expr))) | (star))  # col_name + pp.ZeroOrMore(',' + col_name)
 
-#**********************************************************************************************************
-    """
-    eq = pp.Literal('=')
-    gr = pp.Literal('>')
-    less = pp.Literal('<')
-    gr_or_eq = pp.Literal('>=')
-    less_or_eq = pp.Literal('<=')
-    not_eq = pp.Literal('<>')
-
-
+    # "------------------Блок FROM---------------------"
 
     JOIN = pp.Keyword('JOIN')
     ON = pp.Keyword('ON')
@@ -58,13 +49,28 @@ def make_parser():
     LEFT_OUTER_JOIN = LEFT + OUTER + JOIN
     RIGHT_OUTER_JOIN = RIGHT + OUTER + JOIN
     FULL_OUTER_JOIN = FULL + OUTER + JOIN
-    alias = ppc.identifier
-    table_name = alias  #pp.delimitedList(alias , ".", combine=True)  #
-    on_node = ON + column + eq + column
-    join_node = table_name + (INNER_JOIN | LEFT_OUTER_JOIN | RIGHT_OUTER_JOIN | FULL_OUTER_JOIN | JOIN) + table_name + on_node
-    FROM = pp.Keyword('FROM')
 
-    from_node = FROM + pp.Group(pp.delimitedList(join_node | table_name ))  #table_name + pp.ZeroOrMore(',' + table_name)
+    EQ = pp.Literal('=')
+    GR= pp.Literal('>')
+    LESS = pp.Literal('<')
+    GR_OR_EQ = pp.Literal('>=')
+    LESS_OR_EQ = pp.Literal('<=')
+    NOT_EQ = pp.Literal('<>')
+    COMP_OP = GR_OR_EQ | LESS_OR_EQ | NOT_EQ | GR | LESS | EQ
+
+
+    on_expr = select_expr + COMP_OP + select_expr
+    on = ON + on_expr
+
+    table = ppc.identifier  # pp.delimitedList(alias , ".", combine=True)  #
+    JOIN_OP = INNER_JOIN | LEFT_OUTER_JOIN | RIGHT_OUTER_JOIN | FULL_OUTER_JOIN | JOIN
+
+    join_expr = table + pp.OneOrMore(JOIN_OP + table + on)
+
+    FROM = pp.Keyword('FROM')
+    from_ = FROM + pp.Group(pp.delimitedList(join_expr | table))  # table_name + pp.ZeroOrMore(',' + table_name)
+    # **********************************************************************************************************
+    """
 
 
     WHERE = pp.Keyword('WHERE')
@@ -79,8 +85,9 @@ def make_parser():
   
     query = select
     """
+    query = select + from_ + ';'
+    start = query
 
-    start = select + ';'
 
 
     def set_parse_action_magic(rule_name: str, parser: pp.ParserElement)->None:
@@ -97,9 +104,11 @@ def make_parser():
         else:
             cls = ''.join(x.capitalize() for x in rule_name.split('_')) + 'Node'
             with suppress(NameError):
+                cls_str = cls
                 cls = eval(cls)
                 if not inspect.isabstract(cls):
                     def parse_action(s, loc, tocs):
+                        print(type(cls), cls_str, tocs)
                         return cls(*tocs)
 
                     parser.setParseAction(parse_action)

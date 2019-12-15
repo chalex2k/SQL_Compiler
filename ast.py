@@ -20,6 +20,7 @@ class AstNode(ABC):
             ch0, ch = '├', '│'
             if i == len(childs) - 1:
                 ch0, ch = '└', ' '
+            print(child)
             res.extend(((ch0 if j == 0 else ch) + ' ' + s for j, s in enumerate(child.tree)))
         return res
 
@@ -129,7 +130,7 @@ class SelectNode(AstNode):
 
 
 class FromNode(AstNode):
-    def __init__(self, table: Tuple[TableNode]):
+    def __init__(self, from_,  table: Tuple[TableNode]):
         self.arg = table
 
     @property
@@ -139,22 +140,34 @@ class FromNode(AstNode):
     def __str__(self)->str:
         return 'FROM'
 
-class OnNode(AstNode):
-    def __init__(self, col1: ColumnNode, col2: ColumnNode):
+class OnExprNode(AstNode):
+    def __init__(self, col1: ColumnNode, op: str, col2: ColumnNode):
         self.col1 = col1
         self.col2 = col2
+        self.op = op
 
     @property
     def childs(self) -> Tuple[ColumnNode]:
-        return (self.col1, self.col2)
+        return self.col1, self.col2
+
+    def __str__(self):
+        return self.op
+
+class OnNode(AstNode):
+    def __init__(self, on: str, cond: OnExprNode):
+        self.cond = cond
+
+    @property
+    def childs(self) -> Tuple[ColumnNode]:
+        return self.cond,
 
     def __str__(self):
         return "ON"
 
 
-class JoinNode(AstNode):
-    def __init__(self, value: str, table1: TableNode, table2: TableNode, on: OnNode ):
-        self.value = value
+class JoinExprNode(AstNode):
+    def __init__(self, table1: TableNode, join: str,  table2: TableNode, on: OnNode):
+        self.join = join
         self.table1 = table1
         self.table2 = table2
         self.on = on
@@ -164,7 +177,7 @@ class JoinNode(AstNode):
         return (self.table1, self.table2, self.on)
 
     def __str__(self)->str:
-        return self.value
+        return self.join
 
 
 class OpBlockNode(AstNode):
@@ -234,13 +247,14 @@ class QueryNode(AstNode):
         return str("query")
 '''
 class QueryNode(AstNode):
-    def __init__(self, select: SelectNode):
+    def __init__(self, select: SelectNode, from_: FromNode, tch: str):
         super().__init__()
         self.select = select
+        self.from_ = from_
 
     @property
     def childs(self) -> Tuple[SelectNode]:
-        return self.select,
+        return self.select, self.from_
 
     def __str__(self)->str:
         return str("query")
