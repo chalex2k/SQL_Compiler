@@ -69,13 +69,23 @@ def make_parser():
 
     FROM = pp.Keyword('FROM')
     from_ = FROM + pp.Group(pp.delimitedList(join_expr | table))  # table_name + pp.ZeroOrMore(',' + table_name)
-    # **********************************************************************************************************
-    """
 
+
+    # ****************  Блок WHERE **********************************
 
     WHERE = pp.Keyword('WHERE')
     AND = pp.Keyword('AND')
     OR = pp.Keyword('OR')
+
+    or_ = pp.Forward()
+    group_where = on_expr | LPAR + or_ + RPAR
+    and_ = group_where + pp.ZeroOrMore(AND + group_where)
+    or_ << and_ + pp.ZeroOrMore(OR + and_)
+
+
+    where = WHERE + pp.Group(pp.delimitedList(or_))
+
+    """
     op_block = column + (gr_or_eq | less_or_eq | not_eq | eq | gr | less) + column
     and_block = op_block + pp.ZeroOrMore(AND + op_block)
     or_block = and_block + pp.ZeroOrMore(OR + and_block)
@@ -85,7 +95,7 @@ def make_parser():
   
     query = select
     """
-    query = select + from_ + ';'
+    query = select + from_ + pp.Optional(where) + ';'
     start = query
 
 

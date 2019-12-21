@@ -194,30 +194,36 @@ class OpBlockNode(AstNode):
         return self.sign
 
 
-class AndBlockNode(AstNode):
-    def __init__(self, op_block_nodes: Tuple[OpBlockNode]):
-        self.arg = op_block_nodes
+class AndNode(AstNode):
+    def __init__(self, arg1: OnExprNode, and_: str = '', arg2: OnExprNode = None):
+        if arg2:
+            self.args = (arg1, arg2)
+        else:
+            self.args = [arg1]
 
     @property
-    def childs(self) -> Tuple[OpBlockNode]:
-        return self.arg
+    def childs(self) -> Tuple[OnExprNode]:
+        return self.args
 
     def __str__(self):
         return "AND"
 
 class OrNode(AstNode):
-    def __init__(self, and_nodes: Tuple[AndBlockNode] ):
-        self.arg = and_nodes
+    def __init__(self, arg1: AndNode, or_: str = '', arg2: AndNode = None):
+        if arg2:
+            self.args = (arg1, arg2)
+        else:
+            self.args = [arg1]
 
     @property
-    def childs(self) -> Tuple[AndBlockNode]:
-        return self.arg
+    def childs(self) -> Tuple[AndNode]:
+        return self.args
 
     def __str__(self)->str:
         return "OR"
 
 class WhereNode(AstNode):
-    def __init__(self, or_nodes: Tuple[OrNode]):
+    def __init__(self, where: str, or_nodes: Tuple[OrNode]):
         self.arg = or_nodes
 
     @property
@@ -247,14 +253,13 @@ class QueryNode(AstNode):
         return str("query")
 '''
 class QueryNode(AstNode):
-    def __init__(self, select: SelectNode, from_: FromNode, tch: str):
+    def __init__(self, *blocks: Tuple):
         super().__init__()
-        self.select = select
-        self.from_ = from_
+        self.blocks = blocks[:-1]
 
     @property
     def childs(self) -> Tuple[SelectNode]:
-        return self.select, self.from_
+        return self.blocks
 
     def __str__(self)->str:
         return str("query")
