@@ -17,17 +17,17 @@ def make_parser():
     str_const = INVERTED_COMMA + pp.Word(pp.alphas) + INVERTED_COMMA
     LPAR, RPAR = pp.Literal('(').suppress(), pp.Literal(')').suppress()
     MULT, ADD, CONC = pp.oneOf(('* /')), pp.oneOf(('+ -')), pp.Literal('||')
-
-    add = pp.Forward()
-    group_num = column | num | LPAR + add + RPAR
-    mult = group_num + pp.ZeroOrMore(MULT + group_num)
-    add << mult + pp.ZeroOrMore(ADD + mult)
+    func_name = ppc.identifier
 
     conc = pp.Forward()
-    group_str = LPAR + conc + RPAR | str_const | column
-    conc << group_str + pp.ZeroOrMore(CONC + group_str)
-
-    select_expr = conc | add
+    add = pp.Forward()
+    func = pp.Forward()
+    group_idf = func | column | num | str_const | LPAR + conc + RPAR  #| LPAR + add + RPAR
+    mult = group_idf + pp.ZeroOrMore(MULT + group_idf)
+    add << mult + pp.ZeroOrMore(ADD + mult)
+    conc << add + pp.ZeroOrMore(CONC + add)
+    func << func_name + LPAR + conc + RPAR
+    select_expr = conc| func
 
     star = pp.Literal('*')
 

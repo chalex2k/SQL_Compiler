@@ -20,7 +20,7 @@ class AstNode(ABC):
             ch0, ch = '├', '│'
             if i == len(childs) - 1:
                 ch0, ch = '└', ' '
-            print(child)
+            #print(child)
             res.extend(((ch0 if j == 0 else ch) + ' ' + s for j, s in enumerate(child.tree)))
         return res
 
@@ -111,6 +111,17 @@ class ConcNode(AstNode):
 
     def __str__(self):
         return "||"
+
+class FuncNode(AstNode):
+    def __init__(self, func_name, conc):
+        self.param = conc
+        self.func_name = func_name
+    @property
+    def childs(self) ->Tuple['AstNode', ...]:
+        return (self.param ,)
+
+    def __str__(self):
+        return str(self.func_name)
 
 
 class SelectNode(AstNode):
