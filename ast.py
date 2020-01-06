@@ -152,20 +152,58 @@ class FromNode(AstNode):
         return 'FROM'
 
 class OnExprNode(AstNode):
-    def __init__(self, col1: ColumnNode, op: str, col2: ColumnNode):
-        self.col1 = col1
-        self.col2 = col2
-        self.op = op
+    def __init__(self, *args):  # col1: ColumnNode, op: str, col2: ColumnNode
+        if len(args) == 3:
+            self.col1 = args[0]
+            self.col2 = args[2]
+            self.op = args[1]
+            self.not_ = False
+        elif len(args) == 4:
+            self.col1 = args[1]
+            self.col2 = args[3]
+            self.op = args[2]
+            self.not_ = True
 
     @property
     def childs(self) -> Tuple[ColumnNode]:
         return self.col1, self.col2
 
     def __str__(self):
-        return self.op
+        return self.op if not self.not_ else "NOT" + self.op
+
+
+class AndFromNode(AstNode):
+    def __init__(self, arg1: OnExprNode, and_: str = '', arg2: OnExprNode = None):
+        if arg2:
+            self.args = (arg1, arg2)
+        else:
+            self.args = [arg1]
+
+    @property
+    def childs(self) -> Tuple[OnExprNode]:
+        return self.args
+
+    def __str__(self):
+        return "AND"
+
+
+class OrFromNode(AstNode):
+    def __init__(self, arg1: AndFromNode, or_: str = '', arg2: AndFromNode = None):
+        if arg2:
+            self.args = (arg1, arg2)
+        else:
+            self.args = [arg1]
+
+    @property
+    def childs(self) -> Tuple[AndFromNode]:
+        return self.args
+
+    def __str__(self)->str:
+        return "OR"
+
 
 class OnNode(AstNode):
-    def __init__(self, on: str, cond: OnExprNode):
+    def __init__(self, on: str, cond: OrFromNode):
         self.cond = cond
 
     @property

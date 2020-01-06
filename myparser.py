@@ -58,9 +58,19 @@ def make_parser():
     NOT_EQ = pp.Literal('<>')
     COMP_OP = GR_OR_EQ | LESS_OR_EQ | NOT_EQ | GR | LESS | EQ
 
+    AND = pp.Keyword('AND')
+    OR = pp.Keyword('OR')
+    NOT = pp.Keyword('NOT')
 
-    on_expr = select_expr + COMP_OP + select_expr
-    on = ON + on_expr
+    group_from = pp.Optional(NOT) + select_expr + COMP_OP + select_expr
+
+    or_from = pp.Forward()
+    and_from = pp.Forward()
+    on_expr = group_from | LPAR + group_from + RPAR
+    and_from << on_expr + pp.Optional(AND + and_from)
+    or_from << and_from + pp.Optional(OR + or_from)
+
+    on = ON + or_from
 
     table = ppc.identifier  # pp.delimitedList(alias , ".", combine=True)  #
     JOIN_OP = INNER_JOIN | LEFT_OUTER_JOIN | RIGHT_OUTER_JOIN | FULL_OUTER_JOIN | JOIN
@@ -74,13 +84,13 @@ def make_parser():
     # ****************  Блок WHERE **********************************
 
     WHERE = pp.Keyword('WHERE')
-    AND = pp.Keyword('AND')
-    OR = pp.Keyword('OR')
+
 
     or_ = pp.Forward()
+    and_ = pp.Forward()
     group_where = on_expr | LPAR + or_ + RPAR
-    and_ = group_where + pp.ZeroOrMore(AND + group_where)
-    or_ << and_ + pp.ZeroOrMore(OR + and_)
+    and_ << group_where + pp.Optional(AND + and_)
+    or_ << and_ + pp.Optional(OR + or_)
 
 
     where = WHERE + pp.Group(pp.delimitedList(or_))
