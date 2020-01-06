@@ -215,19 +215,35 @@ class OnNode(AstNode):
 
 
 class JoinExprNode(AstNode):
-    def __init__(self, table1: TableNode, join: str,  table2: TableNode, on: OnNode):
-        self.join = join
-        self.table1 = table1
-        self.table2 = table2
-        self.on = on
+    def __init__(self, *args):  #, table1: TableNode, join: str,  table2: TableNode, on: OnNode):
+        if len(args) == 1:
+            self.flag = 1
+            self.table1 = args[0]
+        elif len(args) == 4:
+            self.flag = 2
+            self.join = args[1]
+            self.table1 = args[0]
+            self.table2 = args[2]
+            self.on = args[3]
 
     @property
     def childs(self) -> (TableNode, TableNode, OnNode):
-        return (self.table1, self.table2, self.on)
+        return (self.table1, self.table2, self.on) if self.flag == 2 else (self.table1 ,)
 
     def __str__(self)->str:
-        return self.join
+        return self.join if self.flag == 2 else ""
 
+class SubqueryNode(AstNode):
+    def __init__(self, col, in_,  query):
+        self.col = col
+        self.query = query
+
+    @property
+    def childs(self):
+        return (self.query,)
+
+    def __str__(self):
+        return "subquery IN"
 
 class OpBlockNode(AstNode):
     def __init__(self, sign: str, col_nodes: Tuple[ColumnNode]):

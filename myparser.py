@@ -19,6 +19,10 @@ def make_parser():
     MULT, ADD, CONC = pp.oneOf(('* /')), pp.oneOf(('+ -')), pp.Literal('||')
     func_name = ppc.identifier
 
+    IN = pp.Keyword('IN')
+    query = pp.Forward()
+
+
     conc = pp.Forward()
     add = pp.Forward()
     func = pp.Forward()
@@ -27,7 +31,7 @@ def make_parser():
     add << mult + pp.ZeroOrMore(ADD + mult)
     conc << add + pp.ZeroOrMore(CONC + add)
     func << func_name + LPAR + conc + RPAR
-    select_expr = conc| func
+    select_expr = conc | func
 
     star = pp.Literal('*')
 
@@ -75,7 +79,8 @@ def make_parser():
     table = ppc.identifier  # pp.delimitedList(alias , ".", combine=True)  #
     JOIN_OP = INNER_JOIN | LEFT_OUTER_JOIN | RIGHT_OUTER_JOIN | FULL_OUTER_JOIN | JOIN
 
-    join_expr = table + pp.OneOrMore(JOIN_OP + table + on)
+    join_expr = pp.Forward()
+    join_expr << table + pp.Optional(JOIN_OP + join_expr + on)
 
     FROM = pp.Keyword('FROM')
     from_ = FROM + pp.Group(pp.delimitedList(join_expr | table))  # table_name + pp.ZeroOrMore(',' + table_name)
@@ -85,10 +90,10 @@ def make_parser():
 
     WHERE = pp.Keyword('WHERE')
 
-
+    subquery = column + IN + LPAR + query + RPAR
     or_ = pp.Forward()
     and_ = pp.Forward()
-    group_where = on_expr | LPAR + or_ + RPAR
+    group_where = subquery | on_expr | LPAR + or_ + RPAR
     and_ << group_where + pp.Optional(AND + and_)
     or_ << and_ + pp.Optional(OR + or_)
 
@@ -105,7 +110,7 @@ def make_parser():
   
     query = select
     """
-    query = select + from_ + pp.Optional(where) + ';'
+    query << select + from_ + pp.Optional(where) + ';'
     start = query
 
 
