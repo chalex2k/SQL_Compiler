@@ -9,7 +9,7 @@ from ast import *
 
 def make_parser():
 
-    #--------------------Грамматика блока SELECT-------------------------------
+    #---------------------------------Грамматика блока SELECT------------------------------------------
 
     INVERTED_COMMA = pp.Literal('\'')
     LPAR, RPAR = pp.Literal('(').suppress(), pp.Literal(')').suppress()
@@ -24,8 +24,8 @@ def make_parser():
     func_name = pp.Word(pp.alphas + pp.nums + "_")
 
     conc = pp.Forward()
-    func = func_name + LPAR + (conc | star) + RPAR
-    group_idf = func | num | str_const | column | LPAR + conc + RPAR  #| LPAR + add + RPAR
+    func_select = func_name + LPAR + (conc | star) + RPAR
+    group_idf = func_select | num | str_const | column | LPAR + conc + RPAR  #| LPAR + add + RPAR
     mult = group_idf + pp.ZeroOrMore(MULT + group_idf)
     add = mult + pp.ZeroOrMore(ADD + mult)
     conc << add + pp.ZeroOrMore(CONC + add)
@@ -34,19 +34,14 @@ def make_parser():
     select = SELECT + pp.Optional(DISTINCT) + (
                 pp.Group(pp.delimitedList(select_expr)) | star)  # col_name + pp.ZeroOrMore(',' + col_name)
 
-    # "------------------Блок FROM---------------------"
 
+    #---------------------------------------Блок FROM------------------------------------------------"
+
+    LEFT_JOIN = pp.Keyword('LEFT JOIN')
+    RIGHT_JOIN = pp.Keyword('RIGHT JOIN')
+    FULL_JOIN = pp.Keyword('FULL JOIN')
     JOIN = pp.Keyword('JOIN')
     ON = pp.Keyword('ON')
-    OUTER = pp.Keyword('OUTER')
-    INNER = pp.Keyword('INNER')
-    LEFT = pp.Keyword('LEFT')
-    RIGHT = pp.Keyword('RIGHT')
-    FULL = pp.Keyword('FULL')
-    INNER_JOIN = INNER + JOIN
-    LEFT_OUTER_JOIN = LEFT + OUTER + JOIN
-    RIGHT_OUTER_JOIN = RIGHT + OUTER + JOIN
-    FULL_OUTER_JOIN = FULL + OUTER + JOIN
 
     EQ = pp.Literal('=')
     GR= pp.Literal('>')
@@ -60,25 +55,17 @@ def make_parser():
     OR = pp.Keyword('OR')
     NOT = pp.Keyword('NOT')
 
-    group_from = pp.Optional(NOT) + select_expr + COMP_OP + select_expr
-
     or_from = pp.Forward()
-    and_from = pp.Forward()
-    on_expr = group_from | LPAR + group_from + RPAR
-    and_from << on_expr + pp.Optional(AND + and_from)
-    or_from << and_from + pp.Optional(OR + or_from)
-
+    bool_expr_on = select_expr + COMP_OP + select_expr
+    group_on = bool_expr_on | LPAR + or_from + RPAR
+    and_from = group_on + pp.ZeroOrMore(AND + group_on)
+    or_from << and_from + pp.ZeroOrMore(OR + and_from)
     on = ON + or_from
-
     table = ppc.identifier  # pp.delimitedList(alias , ".", combine=True)  #
-    JOIN_OP = INNER_JOIN | LEFT_OUTER_JOIN | RIGHT_OUTER_JOIN | FULL_OUTER_JOIN | JOIN
-
-    join_expr = pp.Forward()
-    join_expr << table + pp.Optional(JOIN_OP + join_expr + on)
-
+    JOIN_OP = LEFT_JOIN | RIGHT_JOIN | FULL_JOIN | JOIN
+    join_expr = table + pp.ZeroOrMore(JOIN_OP + table + on)
     FROM = pp.Keyword('FROM')
-    from_ = FROM + pp.Group(pp.delimitedList(join_expr | table))  # table_name + pp.ZeroOrMore(',' + table_name)
-
+    from_ = FROM + pp.Group(pp.delimitedList(join_expr))  # table_name + pp.ZeroOrMore(',' + table_name)
 
     # ****************  Блок WHERE **********************************
 
@@ -96,7 +83,7 @@ def make_parser():
 
     or_ = pp.Forward()
     and_ = pp.Forward()
-    group_where = subquery_in | subquery_exists |subquery_all | subquery_any | on_expr | LPAR + or_ + RPAR
+    group_where = subquery_in | subquery_exists |subquery_all | subquery_any #| on_expr | LPAR + or_ + RPAR
     and_ << group_where + pp.Optional(AND + and_)
     or_ << and_ + pp.Optional(OR + or_)
 
@@ -129,6 +116,26 @@ def make_parser():
                     node = BinOpNode(BinOp(tocs[i]), node, tocs[i + 1])
                 return node
             parser.setParseAction(bin_op_parse_action)
+        elif rule_name == 'bool_expr_on':
+            def bool_expr_on_parse_action(s, loc, tocs):
+                tocs[1] = CompOp(tocs[1])
+                node = BoolExprOnNode(*tocs)
+                return node
+            parser.setParseAction(bool_expr_on_parse_action)
+        elif rule_name in ('and_from', 'or_from'):
+            def bool_expr_on_parse_action(s, loc, tocs):
+                node = tocs[0]
+                for i in range(1, len(tocs) - 1, 2):
+                    node = BoolFromNode(node, tocs[i], tocs[i + 1])
+                return node
+            parser.setParseAction(bool_expr_on_parse_action)
+        elif rule_name == 'join_expr':
+            def join_expr_parse_action(s, loc, tocs):
+                node = tocs[0]
+                for i in range(1, len(tocs) - 1, 3):
+                    node = JoinExprNode(node, tocs[i], tocs[i + 1], tocs[i+2])
+                return node
+            parser.setParseAction(join_expr_parse_action)
         else:
             cls = ''.join(x.capitalize() for x in rule_name.split('_')) + 'Node'
             with suppress(NameError):

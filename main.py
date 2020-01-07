@@ -5,8 +5,8 @@ import myparser
 def main():
     prog = myparser.parse(
          '''
-SELECT DISTINCT count(*) + 2
- FROM students
+SELECT *
+FROM q RIGHT JOIN qq ON str(*) > 2
 ;
         ''')
     print(*prog.tree, sep=os.linesep)
@@ -88,15 +88,17 @@ SELECT count(*) + 2, a
 
 SELECT a,b,c,2,3,4,'d'
 
+SELECT DISTINCT (2+2)
 
 
 
 
 
+FROM t1 JOIN t2 ON (str(1 + '22') >= col1) AND col2 <> 3
 
+FROM t1 JOIN t2 ON (str(1 + '22') >= col1) LEFT JOIN w1 ON (1=1 OR w <> 45) AND r + 3 > r FULL JOIN R
 
-
-
+FROM q RIGHT JOIN qq ON str(*) > 2
 
 
 

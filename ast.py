@@ -58,6 +58,7 @@ class ColumnNode(AstNode):
     def __str__(self) -> str:
         return str(self.name)
 
+
 class BinOp(Enum):
     ADD = '+'
     SUB = '-'
@@ -81,7 +82,7 @@ class BinOpNode(AstNode):
         return str(self.op.value)
 
 
-class FuncNode(AstNode):
+class FuncSelectNode(AstNode):
     def __init__(self, func_name: str, param: AstNode):
         self.param = param
         self.name = func_name
@@ -119,79 +120,65 @@ class SelectNode(AstNode):
 
 
 
+class CompOp(Enum):
+    EQ = '='
+    GR = '>'
+    LESS = '<'
+    GR_OR_EQ = '>='
+    LESS_OR_EQ = '<='
+    NOT_EQ = '<>'
+
+
+class BoolExprOnNode(AstNode):
+    def __init__(self, expr1: AstNode, op: CompOp, expr2: AstNode):  # select_expr + COMP_OP + select_expr
+        self.arg1 = expr1
+        self.arg2 = expr2
+        self.com_op = op
+
+    @property
+    def childs(self) -> Tuple[AstNode]:
+        return self.arg1, self.arg2
+
+    def __str__(self) -> str:
+        return str(self.com_op.value)
+
+
+class BoolFromNode(AstNode):
+    def __init__(self, arg1: BoolExprOnNode, op: str = '', arg2: BoolExprOnNode = None):
+        self.arg1 = arg1
+        self.arg2 = arg2
+        self.op = op
+    @property
+    def childs(self) -> Tuple[BoolExprOnNode]:
+        return self.arg1, self.arg2
+
+    def __str__(self):
+        return str(self.op)
+
+
 class TableNode(AstNode):
     def __init__(self, table_name: str):
         super().__init__()
-        self.table_name = table_name
+        self.name = table_name
 
-    def __str__(self)->str:
-        return self.table_name
+    def __str__(self) -> str:
+        return self.name
 
 
 class FromNode(AstNode):
-    def __init__(self, from_,  table: Tuple[TableNode]):
-        self.arg = table
+    def __init__(self, from_, tables: Tuple[AstNode]):  # TableNode | JoinExprNode
+        self.args = tables
 
     @property
     def childs(self) -> Tuple[TableNode]:
-        return self.arg
+        return self.args
 
-    def __str__(self)->str:
+    def __str__(self) -> str:
         return 'FROM'
-
-class OnExprNode(AstNode):
-    def __init__(self, *args):  # col1: ColumnNode, op: str, col2: ColumnNode
-        if len(args) == 3:
-            self.col1 = args[0]
-            self.col2 = args[2]
-            self.op = args[1]
-            self.not_ = False
-        elif len(args) == 4:
-            self.col1 = args[1]
-            self.col2 = args[3]
-            self.op = args[2]
-            self.not_ = True
-
-    @property
-    def childs(self) -> Tuple[ColumnNode]:
-        return self.col1, self.col2
-
-    def __str__(self):
-        return self.op if not self.not_ else "NOT" + self.op
-
-
-class AndFromNode(AstNode):
-    def __init__(self, arg1: OnExprNode, and_: str = '', arg2: OnExprNode = None):
-        if arg2:
-            self.args = (arg1, arg2)
-        else:
-            self.args = [arg1]
-
-    @property
-    def childs(self) -> Tuple[OnExprNode]:
-        return self.args
-
-    def __str__(self):
-        return "AND"
-
-
-class OrFromNode(AstNode):
-    def __init__(self, arg1: AndFromNode, or_: str = '', arg2: AndFromNode = None):
-        if arg2:
-            self.args = (arg1, arg2)
-        else:
-            self.args = [arg1]
-
-    @property
-    def childs(self) -> Tuple[AndFromNode]:
-        return self.args
-
-    def __str__(self)->str:
-        return "OR"
 
 
 class OnNode(AstNode):
-    def __init__(self, on: str, cond: OrFromNode):
+    def __init__(self, on: str, cond: BoolExprOnNode):
         self.cond = cond
 
     @property
@@ -203,23 +190,21 @@ class OnNode(AstNode):
 
 
 class JoinExprNode(AstNode):
-    def __init__(self, *args):  #, table1: TableNode, join: str,  table2: TableNode, on: OnNode):
-        if len(args) == 1:
-            self.flag = 1
-            self.table1 = args[0]
-        elif len(args) == 4:
-            self.flag = 2
-            self.join = args[1]
-            self.table1 = args[0]
-            self.table2 = args[2]
-            self.on = args[3]
+    def __init__(self, table1: TableNode, join: str,  table2: TableNode, on: OnNode):  #, table1: TableNode, join: str,  table2: TableNode, on: OnNode):
+        self.join = join
+        self.table1 = table1
+        self.table2 = table2
+        self.on = on
 
     @property
     def childs(self) -> (TableNode, TableNode, OnNode):
-        return (self.table1, self.table2, self.on) if self.flag == 2 else (self.table1 ,)
+        return self.table1, self.table2, self.on
 
-    def __str__(self)->str:
-        return self.join if self.flag == 2 else ""
+    def __str__(self) -> str:
+        return str(self.join)
+
+
+
 
 
 class SubqueryExistsNode(AstNode):
@@ -261,14 +246,14 @@ class OpBlockNode(AstNode):
 
 
 class AndNode(AstNode):
-    def __init__(self, arg1: OnExprNode, and_: str = '', arg2: OnExprNode = None):
+    def __init__(self, arg1: AstNode, and_: str = '', arg2: AstNode = None):
         if arg2:
             self.args = (arg1, arg2)
         else:
             self.args = [arg1]
 
     @property
-    def childs(self) -> Tuple[OnExprNode]:
+    def childs(self) -> Tuple[AstNode]:
         return self.args
 
     def __str__(self):
