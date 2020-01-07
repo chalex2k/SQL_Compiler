@@ -14,7 +14,7 @@ class AstNode(ABC):
 
     @property
     def tree(self)->[str, ...]:
-        res = [str(self)]
+        res = [str(self) + "   " + str(type(self))]
         childs = self.childs
         for i, child in enumerate(childs):
             ch0, ch = '├', '│'
@@ -32,30 +32,31 @@ class AstNode(ABC):
         return self.childs[index] if index < len(self.childs) else None
 
 
-class ColumnNode(AstNode):
-    def __init__(self, col_name: str):
-        super().__init__()
-        self.col_name = col_name
-
-    def __str__(self)->str:
-        return self.col_name
-
 class NumNode(AstNode):
-    def __init__(self, num: float):
+    def __init__(self, num: str):
         super().__init__()
         self.num = float(num)
 
-    def __str__(self)->str:
+    def __str__(self) -> str:
         return str(self.num)
 
+
 class StrConstNode(AstNode):
-    def __init__(self, l_par: str, string: str, rpar:str):
+    def __init__(self, l_par: str, string: str, r_par: str):
         super().__init__()
         self.string = str(string)
 
-    def __str__(self)->str:
+    def __str__(self) -> str:
         return str(self.string)
 
+
+class ColumnNode(AstNode):
+    def __init__(self, name: str):
+        super().__init__()
+        self.name = str(name)
+
+    def __str__(self) -> str:
+        return str(self.name)
 
 class BinOp(Enum):
     ADD = '+'
@@ -66,7 +67,7 @@ class BinOp(Enum):
 
 
 class BinOpNode(AstNode):
-    def __init__(self, op: BinOp, arg1: AstNode, arg2: AstNode):
+    def __init__(self, op: BinOp, arg1: AstNode, arg2: AstNode):  # arg1, arg2: NumNode | ColumnNode | StrConstNode | и др.
         super().__init__()
         self.op = op
         self.arg1 = arg1
@@ -76,52 +77,29 @@ class BinOpNode(AstNode):
     def childs(self) -> Tuple[AstNode, AstNode]:
         return self.arg1, self.arg2
 
-    def __str__(self)->str:
+    def __str__(self) -> str:
         return str(self.op.value)
 
 
-class TableNode(AstNode):
-    def __init__(self, table_name: str):
-        super().__init__()
-        self.table_name = table_name
+class FuncNode(AstNode):
+    def __init__(self, func_name: str, param: AstNode):
+        self.param = param
+        self.name = func_name
 
-    def __str__(self)->str:
-        return self.table_name
+    @property
+    def childs(self) -> Tuple['AstNode', ...]:
+        return self.param,
 
-class SelectExprNode(AstNode):
-    pass
+    def __str__(self) -> str:
+        return str(self.name)
+
 
 class StarNode(AstNode):
     def __init__(self, star: str):
         super().__init__()
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "*"
-
-class AddNode(AstNode):
-    pass
-
-class ConcNode(AstNode):
-    def __init__(self, group: Tuple[AstNode]):
-        self.operans = group
-
-    @property
-    def childs(self) -> Tuple[AstNode]:
-        return self.operans
-
-    def __str__(self):
-        return "||"
-
-class FuncNode(AstNode):
-    def __init__(self, func_name, conc):
-        self.param = conc
-        self.func_name = func_name
-    @property
-    def childs(self) ->Tuple['AstNode', ...]:
-        return (self.param ,)
-
-    def __str__(self):
-        return str(self.func_name)
 
 
 class SelectNode(AstNode):
@@ -133,11 +111,21 @@ class SelectNode(AstNode):
         self.distinct = len(args) == 3
 
     @property
-    def childs(self) -> Tuple[ColumnNode]:
+    def childs(self) -> Tuple[AstNode]:
         return self.col
 
-    def __str__(self)->str:
+    def __str__(self) -> str:
         return 'SELECT' if not self.distinct else "SELECT DISTINCT"
+
+
+
+class TableNode(AstNode):
+    def __init__(self, table_name: str):
+        super().__init__()
+        self.table_name = table_name
+
+    def __str__(self)->str:
+        return self.table_name
 
 
 class FromNode(AstNode):

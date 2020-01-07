@@ -9,36 +9,30 @@ from ast import *
 
 def make_parser():
 
-    #"Грамматика блока SELECT"
+    #--------------------Грамматика блока SELECT-------------------------------
 
-    column = ppc.identifier
-    num = ppc.fnumber
     INVERTED_COMMA = pp.Literal('\'')
-    str_const = INVERTED_COMMA + pp.Word(pp.alphas) + INVERTED_COMMA
     LPAR, RPAR = pp.Literal('(').suppress(), pp.Literal(')').suppress()
     MULT, ADD, CONC = pp.oneOf(('* /')), pp.oneOf(('+ -')), pp.Literal('||')
-    func_name = ppc.identifier
-
-    IN = pp.Keyword('IN')
-    query = pp.Forward()
-
-
-    conc = pp.Forward()
-    add = pp.Forward()
-    func = pp.Forward()
-    group_idf = func | column | num | str_const | LPAR + conc + RPAR  #| LPAR + add + RPAR
-    mult = group_idf + pp.ZeroOrMore(MULT + group_idf)
-    add << mult + pp.ZeroOrMore(ADD + mult)
-    conc << add + pp.ZeroOrMore(CONC + add)
-    func << func_name + LPAR + conc + RPAR
-    select_expr = conc | func
-
-    star = pp.Literal('*')
-
     SELECT = pp.Keyword("SELECT")
     DISTINCT = pp.Keyword('DISTINCT')
+    star = pp.Literal('*')
+
+    column = pp.Regex(r'\w+(\.\w+)?')
+    num = ppc.fnumber
+    str_const = INVERTED_COMMA + pp.Word(pp.alphas + pp.nums + "_" + " ") + INVERTED_COMMA
+    func_name = pp.Word(pp.alphas + pp.nums + "_")
+
+    conc = pp.Forward()
+    func = func_name + LPAR + (conc | star) + RPAR
+    group_idf = func | num | str_const | column | LPAR + conc + RPAR  #| LPAR + add + RPAR
+    mult = group_idf + pp.ZeroOrMore(MULT + group_idf)
+    add = mult + pp.ZeroOrMore(ADD + mult)
+    conc << add + pp.ZeroOrMore(CONC + add)
+    select_expr = conc
+
     select = SELECT + pp.Optional(DISTINCT) + (
-                (pp.Group(pp.delimitedList(select_expr))) | (star))  # col_name + pp.ZeroOrMore(',' + col_name)
+                pp.Group(pp.delimitedList(select_expr)) | star)  # col_name + pp.ZeroOrMore(',' + col_name)
 
     # "------------------Блок FROM---------------------"
 
@@ -92,6 +86,8 @@ def make_parser():
     EXISTS = pp.Keyword('EXISTS')
     ANY = pp.Keyword('ANY')
     ALL = pp.Keyword('ALL')
+    IN = pp.Keyword('IN')
+    query = pp.Forward()
 
     subquery_in = column + IN + LPAR + query + RPAR
     subquery_exists = EXISTS + LPAR + query + RPAR
@@ -276,4 +272,7 @@ parser = make_parser()
 
 
 def parse(prog: str)->QueryNode:
-    return parser.parseString(str(prog))[0]
+    print('Создание узлов:')
+    temp =  parser.parseString(str(prog))[0]
+    print('Создание узлов закончено')
+    return temp
