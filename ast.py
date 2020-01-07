@@ -233,14 +233,27 @@ class JoinExprNode(AstNode):
     def __str__(self)->str:
         return self.join if self.flag == 2 else ""
 
-class SubqueryNode(AstNode):
+
+class SubqueryExistsNode(AstNode):
+    def __init__(self, exist,  query):
+        self.query = query
+
+    @property
+    def childs(self):
+        return (self.query,)
+
+    def __str__(self):
+        return "subquery EXIST"
+
+
+class SubqueryInNode(AstNode):
     def __init__(self, col, in_,  query):
         self.col = col
         self.query = query
 
     @property
     def childs(self):
-        return (self.query,)
+        return (self.col, self.query)
 
     def __str__(self):
         return "subquery IN"

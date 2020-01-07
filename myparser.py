@@ -89,11 +89,18 @@ def make_parser():
     # ****************  Блок WHERE **********************************
 
     WHERE = pp.Keyword('WHERE')
+    EXISTS = pp.Keyword('EXISTS')
+    ANY = pp.Keyword('ANY')
+    ALL = pp.Keyword('ALL')
 
-    subquery = column + IN + LPAR + query + RPAR
+    subquery_in = column + IN + LPAR + query + RPAR
+    subquery_exists = EXISTS + LPAR + query + RPAR
+    subquery_any = column + COMP_OP + ANY + LPAR + query + RPAR
+    subquery_all = column + COMP_OP + ALL + LPAR + query + RPAR
+
     or_ = pp.Forward()
     and_ = pp.Forward()
-    group_where = subquery | on_expr | LPAR + or_ + RPAR
+    group_where = subquery_in | subquery_exists |subquery_all | subquery_any | on_expr | LPAR + or_ + RPAR
     and_ << group_where + pp.Optional(AND + and_)
     or_ << and_ + pp.Optional(OR + or_)
 
