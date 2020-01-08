@@ -157,12 +157,13 @@ class BoolFromNode(AstNode):
 
 
 class TableNode(AstNode):
-    def __init__(self, table_name: str):
+    def __init__(self, table_name: str, alias: str = None):
         super().__init__()
-        self.name = table_name
+        self.name = str(table_name)
+        self.alias = alias
 
     def __str__(self) -> str:
-        return self.name
+        return self.name + " " + str(self.alias) if self.alias else self.name
 
 
 class FromNode(AstNode):

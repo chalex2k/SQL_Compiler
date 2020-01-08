@@ -61,9 +61,10 @@ def make_parser():
     and_from = group_on + pp.ZeroOrMore(AND + group_on)
     or_from << and_from + pp.ZeroOrMore(OR + and_from)
     on = ON + or_from
-    table = ppc.identifier  # pp.delimitedList(alias , ".", combine=True)  #
+    table = pp.Forward()
     JOIN_OP = LEFT_JOIN | RIGHT_JOIN | FULL_JOIN | JOIN
     join_expr = table + pp.ZeroOrMore(JOIN_OP + table + on)
+    table << ppc.identifier + pp.Optional(pp.Word(pp.srange("[a-z0-9_]")))  # pp.delimitedList(alias , ".", combine=True)  #
     FROM = pp.Keyword('FROM')
     from_ = FROM + pp.Group(pp.delimitedList(join_expr))  # table_name + pp.ZeroOrMore(',' + table_name)
 

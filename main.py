@@ -6,7 +6,7 @@ def main():
     prog = myparser.parse(
          '''
 SELECT *
-FROM q RIGHT JOIN qq ON str(*) > 2
+FROM q al1 RIGHT JOIN qq ON str(*) > 2
 ;
         ''')
     print(*prog.tree, sep=os.linesep)
