@@ -1,12 +1,33 @@
 from abc import ABC, abstractmethod
 from typing import Callable, Tuple, Optional, Union
 from enum import Enum
+from table import Table
+import exceptions
 
+class Type(Enum):
+    STR = 1
+    NUM = 2
+    TABLE = 3
+    BOOL = 4
+    STAR = 5
+
+class QueryContext:
+    def __init__(self):
+        self.db = {}
+        self.aliases = {}
 
 class AstNode(ABC):
     @property
     def childs(self)->Tuple['AstNode', ...]:
         return ()
+
+    @property
+    def value(self): # str, float, table, bool
+        return self.value
+
+    @property
+    def typ(self) -> Type:
+        return self.type_
 
     @abstractmethod
     def __str__(self)->str:
@@ -24,6 +45,19 @@ class AstNode(ABC):
             res.extend(((ch0 if j == 0 else ch) + ' ' + s for j, s in enumerate(child.tree)))
         return res
 
+    def full_up_context_table(self, context: QueryContext):
+        if isinstance(self, TableNode):
+            if self.name in context.db:
+                context.aliases[self.name] = context.db[self.name]
+                if self.alias:
+                    context.aliases[self.alias] = context.db[self.name]
+            else:
+                raise exceptions.UnknownTable('Unknown table ' + self.name)
+        if self.childs:
+            for child in self.childs:
+                child.full_up_context_table(context)
+
+
     def visit(self, func: Callable[['AstNode'], None])->None:
         func(self)
         map(func, self.childs)
@@ -32,10 +66,12 @@ class AstNode(ABC):
         return self.childs[index] if index < len(self.childs) else None
 
 
+
 class NumNode(AstNode):
     def __init__(self, num: str):
         super().__init__()
         self.num = float(num)
+        self.type_ = Type.NUM
 
     def __str__(self) -> str:
         return str(self.num)
@@ -45,6 +81,7 @@ class StrConstNode(AstNode):
     def __init__(self, l_par: str, string: str, r_par: str):
         super().__init__()
         self.string = str(string)
+        self.type_ = Type.STR
 
     def __str__(self) -> str:
         return str(self.string)
@@ -98,6 +135,7 @@ class FuncSelectNode(AstNode):
 class StarNode(AstNode):
     def __init__(self, star: str):
         super().__init__()
+        self.type_ = Type.STAR
 
     def __str__(self) -> str:
         return "*"
@@ -134,6 +172,7 @@ class BoolExprOnNode(AstNode):
         self.arg1 = expr1
         self.arg2 = expr2
         self.com_op = op
+        self.type_ = Type.BOOL
 
     @property
     def childs(self) -> Tuple[AstNode]:
@@ -148,6 +187,8 @@ class BoolFromNode(AstNode):
         self.arg1 = arg1
         self.arg2 = arg2
         self.op = op
+        self.type_ = Type.BOOL
+
     @property
     def childs(self) -> Tuple[BoolExprOnNode]:
         return self.arg1, self.arg2
@@ -271,3 +312,9 @@ class QueryNode(AstNode):
 
     def __str__(self)->str:
         return str("query")
+
+    def execute(self, context: QueryContext) -> Table:
+        for child in self.childs:
+            if isinstance(child, FromNode):
+                child.full_up_context_table(context)
+        #return context
