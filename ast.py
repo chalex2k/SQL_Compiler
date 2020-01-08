@@ -206,104 +206,60 @@ class JoinExprNode(AstNode):
 
 
 
-
-
 class SubqueryExistsNode(AstNode):
-    def __init__(self, exist,  query):
+    def __init__(self, exists,  query):
         self.query = query
+        self.exists = str(exists)
 
     @property
     def childs(self):
         return (self.query,)
 
     def __str__(self):
-        return "subquery EXIST"
+        return self.exists
 
 
 class SubqueryInNode(AstNode):
-    def __init__(self, col, in_,  query):
-        self.col = col
+    def __init__(self, expr, in_, query):
+        self.expr = expr
+        self.query = query
+        self.in_ = str(in_)
+
+    @property
+    def childs(self):
+        return (self.expr, self.query)
+
+    def __str__(self):
+        return self.in_
+
+
+class SubqueryAnyAllNode(AstNode):
+    def __init__(self, expr, comp_op, any_all: str, query):
+        self.expr = expr
+        self.copm_op = comp_op
+        self.any_all = any_all
         self.query = query
 
     @property
     def childs(self):
-        return (self.col, self.query)
+        return (self.expr, self.query)
 
     def __str__(self):
-        return "subquery IN"
-
-class OpBlockNode(AstNode):
-    def __init__(self, sign: str, col_nodes: Tuple[ColumnNode]):
-        self.sign = sign
-        self.arg = col_nodes
-        super().__init__()
-
-    @property
-    def childs(self) -> Tuple[ColumnNode]:
-        return self.arg
-
-    def __str__(self):
-        return self.sign
+        return str(self.copm_op.value) + str(self.any_all)
 
 
-class AndNode(AstNode):
-    def __init__(self, arg1: AstNode, and_: str = '', arg2: AstNode = None):
-        if arg2:
-            self.args = (arg1, arg2)
-        else:
-            self.args = [arg1]
+class WhereNode(AstNode):
+    def __init__(self, where: str, bool_node: Tuple[AstNode]):
+        self.arg = bool_node
 
     @property
     def childs(self) -> Tuple[AstNode]:
-        return self.args
-
-    def __str__(self):
-        return "AND"
-
-class OrNode(AstNode):
-    def __init__(self, arg1: AndNode, or_: str = '', arg2: AndNode = None):
-        if arg2:
-            self.args = (arg1, arg2)
-        else:
-            self.args = [arg1]
-
-    @property
-    def childs(self) -> Tuple[AndNode]:
-        return self.args
-
-    def __str__(self)->str:
-        return "OR"
-
-class WhereNode(AstNode):
-    def __init__(self, where: str, or_nodes: Tuple[OrNode]):
-        self.arg = or_nodes
-
-    @property
-    def childs(self) -> Tuple[OrNode]:
         return self.arg
 
-    def __str__(self)->str:
+    def __str__(self) -> str:
         return 'WHERE'
 
 
-'''
-class QueryNode(AstNode):
-    def __init__(self, select: SelectNode, from_: FromNode, where: WhereNode = None):
-        super().__init__()
-        self.select = select
-        self.from_ = from_
-        self.where = where
-
-    @property
-    def childs(self) -> Tuple[SelectNode, FromNode]:
-        if self.where is None:
-            return self.select, self.from_
-        else:
-            return self.select, self.from_, self.where
-
-    def __str__(self)->str:
-        return str("query")
-'''
 class QueryNode(AstNode):
     def __init__(self, *blocks: Tuple):
         super().__init__()
@@ -315,4 +271,3 @@ class QueryNode(AstNode):
 
     def __str__(self)->str:
         return str("query")
-

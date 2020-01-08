@@ -5,9 +5,12 @@ import myparser
 def main():
     prog = myparser.parse(
          '''
-SELECT *
-FROM q al1 RIGHT JOIN qq ON str(*) > 2
-;
+    SELECT DISTINCT to_Int(str(dfd + 2) * ('aaa' || qwe * 3))  , str(2) || (4 *2)
+    FROM t1 JOIN t2 aliya ON (str(1 + '22') >= col1) LEFT JOIN w1 ON (1=1 OR w <> 45) AND r + 3 > r FULL JOIN R ON 1=1
+    WHERE (q = b OR asd > nj) 
+        AND q > e  
+        AND (www = t OR fgk >= ANY ( SELECT * FROM students WHERE NOT EXISTS(SELECT tratr FROM sas;) ; ) )
+    ;
         ''')
     print(*prog.tree, sep=os.linesep)
 if __name__ == "__main__":

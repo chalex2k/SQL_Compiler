@@ -71,25 +71,35 @@ def make_parser():
     # ****************  Блок WHERE **********************************
 
     WHERE = pp.Keyword('WHERE')
-    EXISTS = pp.Keyword('EXISTS')
+    EXISTS = pp.Keyword('EXISTS') | pp.Keyword('NOT EXISTS')
     ANY = pp.Keyword('ANY')
     ALL = pp.Keyword('ALL')
-    IN = pp.Keyword('IN')
+    IN = pp.Keyword('IN') | pp.Keyword('NOT IN')
+
     query = pp.Forward()
 
-    subquery_in = column + IN + LPAR + query + RPAR
+    subquery = LPAR + query + RPAR
+
+    conc_= pp.Forward()
+    func_select_ = func_name + LPAR + (conc_ | star) + RPAR
+    group_idf_ = func_select_ | num | str_const | column | subquery | LPAR + conc_ + RPAR  # | LPAR + add + RPAR
+    mult_ = group_idf_ + pp.ZeroOrMore(MULT + group_idf_)
+    add_ = mult_ + pp.ZeroOrMore(ADD + mult_)
+    conc_ << add_ + pp.ZeroOrMore(CONC + add_)
+    select_expr_ = conc_
+
+    subquery_in = select_expr_ + IN + LPAR + query + RPAR
     subquery_exists = EXISTS + LPAR + query + RPAR
-    subquery_any = column + COMP_OP + ANY + LPAR + query + RPAR
-    subquery_all = column + COMP_OP + ALL + LPAR + query + RPAR
+    subquery_any_all = select_expr_ + COMP_OP + (ANY | ALL) + LPAR + query + RPAR
 
-    or_ = pp.Forward()
-    and_ = pp.Forward()
-    group_where = subquery_in | subquery_exists |subquery_all | subquery_any #| on_expr | LPAR + or_ + RPAR
-    and_ << group_where + pp.Optional(AND + and_)
-    or_ << and_ + pp.Optional(OR + or_)
+    or_from_ = pp.Forward()
+    bool_expr_on_ = select_expr_ + COMP_OP + select_expr_
+    bool_subquery = subquery_in | subquery_exists | subquery_any_all
+    group_on_ = bool_subquery | bool_expr_on_ | LPAR + or_from_ + RPAR
+    and_from_ = group_on_ + pp.ZeroOrMore(AND + group_on_)
+    or_from_ << and_from_ + pp.ZeroOrMore(OR + and_from_)
 
-
-    where = WHERE + pp.Group(pp.delimitedList(or_))
+    where = WHERE + pp.Group(pp.delimitedList(or_from_))
 
     """
     op_block = column + (gr_or_eq | less_or_eq | not_eq | eq | gr | less) + column
@@ -117,13 +127,19 @@ def make_parser():
                     node = BinOpNode(BinOp(tocs[i]), node, tocs[i + 1])
                 return node
             parser.setParseAction(bin_op_parse_action)
-        elif rule_name == 'bool_expr_on':
+        elif rule_name in ('bool_expr_on', 'bool_expr_on_'):
             def bool_expr_on_parse_action(s, loc, tocs):
                 tocs[1] = CompOp(tocs[1])
                 node = BoolExprOnNode(*tocs)
                 return node
             parser.setParseAction(bool_expr_on_parse_action)
-        elif rule_name in ('and_from', 'or_from'):
+        elif rule_name == 'subquery_any_all':
+            def subquery_any_all_parse_action(s, loc, tocs):
+                tocs[1] = CompOp(tocs[1])
+                node = SubqueryAnyAllNode(*tocs)
+                return node
+            parser.setParseAction(subquery_any_all_parse_action)
+        elif rule_name in ('and_from', 'or_from', 'and_from_', 'or_from_'):
             def bool_expr_on_parse_action(s, loc, tocs):
                 node = tocs[0]
                 for i in range(1, len(tocs) - 1, 2):
