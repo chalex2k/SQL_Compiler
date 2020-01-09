@@ -1,10 +1,16 @@
 class Table:
-    def __init__(self, name, titles, table):
+    def __init__(self, *args):
+        if len(args) == 2:
+            self.init_parse_table(*args)
+        elif len(args) == 3:
+            self.init(*args)
+
+    def init(self, name, titles, table):
         self._name = name   # str
         self._titles = titles  # List[str]
         self._table = table # List[dict[]]
     
-    def __init__(self, name, table):
+    def init_parse_table(self, name, table):
         self._name = name
         self._titles = table[0]
         self._table = []
@@ -28,7 +34,7 @@ class Table:
 
     def __str__(self):
         result = ""
-        result +='   ' + self.name + '\n'
+        result += '   ' + self.name + '\n'
         for title in self.titles:
             result += '{:^30}'.format(title)
         result += '\n'

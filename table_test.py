@@ -22,9 +22,9 @@ students = Table('students', data)
 print(students)
 
 data2 = [
-    ['Profession', 'Company'],
-    ['student', 'university'],
-    ['developer', 'it company']
+    ['Profession', 'Company', 'Age'],
+    ['student', 'university', 22],
+    ['developer', 'it company', 20]
 ]
 
 professions = Table('professions', data2)
@@ -39,8 +39,8 @@ print(professions)
 prog = myparser.parse(
          '''
     SELECT DISTINCT to_Int(str(dfd + 2) * ('aaa' || qwe * 3))  , str(2) || (4 *2)
-    FROM professions JOIN students s ON (str(1 + '22') >= col1) LEFT JOIN students ON (1=1 OR w <> 45) AND r + 3 > r FULL JOIN students ON 1=1
-    WHERE (q = b OR asd > nj) 
+    FROM students, professions p JOIN students s ON p.Age = s.Age
+    WHERE (q = b OR asd > nj)
         AND q > e  
         AND (www = t OR fgk >= ANY ( SELECT * FROM students WHERE NOT EXISTS(SELECT tratr FROM sas;) ; ) )
     ;
