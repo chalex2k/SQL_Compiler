@@ -161,6 +161,12 @@ class StrConstNode(AstNode):
     def __str__(self) -> str:
         return str(self.string)
 
+    def get_type(self, context) -> Type:
+        return Type.STR
+
+    def get_value(self, context) -> str:
+        return self.string
+
 
 class ColumnNode(AstNode):
     def __init__(self, name: str):
@@ -338,6 +344,16 @@ class BoolFromNode(AstNode):
 
     def __str__(self):
         return str(self.op)
+
+    def get_value(self, context) -> bool:
+        v1 = self.arg1.get_value(context)
+        v2 = self.arg2.get_value(context)
+        if self.op == 'AND':
+            return v1 and v2
+        elif self.op == 'OR':
+            return v1 or v2
+        else:
+            raise exceptions.InvalidOperator("Invalid operator " + self.op)
 
 
 class TableNode(AstNode):

@@ -44,12 +44,12 @@ print(lecturers)
 #    return bool(random.randint(0, 1))
 
 #students.join(professions, comp)
-#print(students)
+#print(students)   students.Surname = 'Chirkin' OR p.Age = 20
 
 prog = myparser.parse(
          '''
     SELECT DISTINCT to_Int(str(dfd + 2) * ('aaa' || qwe * 3))  , str(2) || (4 *2)
-    FROM students s JOIN professions p ON students.Age = 20
+    FROM students s1 JOIN professions s2 ON s1.Age  = s2.Age JOIN lecturers l ON l.Kurs = 1 OR l.Kurs = 2 AND s1.Name = 'Ivan'
     WHERE (q = b OR asd > nj)
         AND q > e  
         AND (www = t OR fgk >= ANY ( SELECT * FROM students WHERE NOT EXISTS(SELECT tratr FROM sas;) ; ) )
