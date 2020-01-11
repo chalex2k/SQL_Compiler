@@ -498,6 +498,22 @@ class WhereNode(AstNode):
     def __str__(self) -> str:
         return 'WHERE'
 
+    def get_value(self, context: QueryContext, table: VirtualTable ) -> VirtualTable:
+        deleted_list = []
+        for t_index, math_line in enumerate(table.matched_list):
+            context_on = ContextOn()
+            for index, num in enumerate(math_line):
+                for col_name, value in table.tables[index].table[num].items():
+                    v = Var(value, col_name, table.tables[index].name, context.get_alias_by_name(table.tables[index].name))
+                    context_on.vars.append(v)
+            if not self.arg[0].get_value(context_on):
+                deleted_list.append(t_index)
+        for i in range(len(deleted_list)-1, -1, -1):
+            table.matched_list.pop(deleted_list[i])
+        return table
+
+
+
 
 class QueryNode(AstNode):
     def __init__(self, *blocks: Tuple):
@@ -532,5 +548,8 @@ class QueryNode(AstNode):
                 for i in range(1, len(child.childs)): # таблица может получиться с несколькими одинаковыми именами столбцов
                     table = self.cartesian_product(table, child.childs[i].get_value(context))
 
+                #return table
+                for child in self.childs:
+                    if isinstance(child, WhereNode):
+                        table = child.get_value(context, table )
                 return table
-

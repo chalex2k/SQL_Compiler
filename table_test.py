@@ -49,12 +49,10 @@ print(lecturers)
 prog = myparser.parse(
          '''
     SELECT DISTINCT to_Int(str(dfd + 2) * ('aaa' || qwe * 3))  , str(2) || (4 *2)
-    FROM students s1 JOIN professions s2 ON s1.Age  = s2.Age JOIN lecturers l ON l.Kurs = 1 OR l.Kurs = 2 AND s1.Name = 'Ivan'
-    WHERE (q = b OR asd > nj)
-        AND q > e  
-        AND (www = t OR fgk >= ANY ( SELECT * FROM students WHERE NOT EXISTS(SELECT tratr FROM sas;) ; ) )
+    FROM students s, professions p
+    WHERE s.Kurs = 3 OR Surname = 'Lipatova'
     ;
         ''')
-
+#FROM students s1 JOIN professions s2 ON s1.Age  = s2.Age JOIN lecturers l ON l.Kurs = 1 OR l.Kurs = 2 AND s1.Name = 'Ivan'
 print(*prog.tree, sep=os.linesep)
 print(compilate([students, professions, lecturers], prog))
