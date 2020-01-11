@@ -4,6 +4,40 @@ from enum import Enum
 from table import Table
 import exceptions
 
+class Var:
+    def __init__(self, value, col_name: str, t_name: str, alias: str = ''):
+        self.t_name = t_name
+        self.value = value
+        self.col_name = col_name
+        self.alias = alias
+
+class VirtualTable:
+    def __init__(self):
+        self.tables = []
+        self.matched_list = []
+
+    def createVTFromT(self, table: Table):
+        self.tables = [table]
+        for r in range(0, len(table.table)):
+            self.matched_list.append([r])
+
+    def get_rows(self):
+        for match in self.matched_list:
+            row = []
+            for index, value in enumerate(match):
+                for key, value2 in dict.items(self.tables[index].table[value]):
+                    row.append(Var(key, value2, self.tables[index]))
+            yield row
+
+    def __str__(self) -> str:
+        result = ""
+        for match in self.matched_list:
+            for index, num in enumerate(match):
+                for col_name, value in self.tables[index].table[num].items():
+                    result += '{:^30}'.format(value)
+            result += '\n'
+        return result
+
 class Type(Enum):
     STR = 1
     NUM = 2
@@ -17,9 +51,16 @@ class QueryContext:
         self.db = {}
         self.aliases = {}
 
+    def get_alias_by_name(self, name: str):
+        for al, t in self.aliases.items():
+            if t is self.aliases[name] and al != name:
+                return al
+        return ''
+
+
 class ContextOn:
     def __init__(self):
-        self.tables = {}
+        self.vars = []
 
     def find_col(self, name: str):
         for t in self.tables:
@@ -27,16 +68,29 @@ class ContextOn:
                 return t[name]
                 break
         else:
-            raise exceptions.UnknownColumn("unknowm column " + name)
+            raise exceptions.UnknownColumn("unknown column " + name)
+
+    def find_by_col_name(self, col_name: str):
+        for v in self.vars:
+            if v.col_name == col_name:
+                return v.value
+        raise exceptions.UnknownColumn("unknown column " + col_name)
+
+    def find_by_table_and_col(self, t_name: str, col_name: str):
+        for v in self.vars:
+            if (v.alias == t_name or v.t_name == t_name) and v.col_name == col_name:
+                return v.value
+        raise exceptions.UnknownColumn("unknown column " + col_name)
+
 
 class AstNode(ABC):
     @property
     def childs(self)->Tuple['AstNode', ...]:
         return ()
 
-    @property
-    def value(self): # str, float, table, bool
-        return self.value
+    #@property
+    #def value(self): # str, float, table, bool
+    #    return self.value
 
     @property
     def typ(self) -> Type:
@@ -92,6 +146,11 @@ class NumNode(AstNode):
     def __str__(self) -> str:
         return str(self.num)
 
+    def get_type(self, context) -> Type:
+        return Type.NUM
+
+    def get_value(self, context) -> float:
+        return self.num
 
 class StrConstNode(AstNode):
     def __init__(self, l_par: str, string: str, r_par: str):
@@ -113,19 +172,13 @@ class ColumnNode(AstNode):
 
     def get_value(self, context: ContextOn):
         if len(self.name.split('.')) == 1: # название стобца без названия таблицы
-            return context.find_col(self.name)
+            return context.find_by_col_name(self.name)
         else:
             table_name = self.name.split('.')[0]
             col_name = self.name.split('.')[1]
-            if table_name in context.tables:
-                if col_name in context.tables[table_name]:
-                    return context.tables[table_name][col_name]
-                else:
-                    raise exceptions.UnknownColumn("Unknown column" + col_name)
-            else:
-                raise exceptions.UnknownTable('Unknow table ' + table_name)
+            return context.find_by_table_and_col(table_name, col_name)
 
-    def get_type(self, context: ContextOn):
+    def get_type(self, context: ContextOn) -> Type:
         v = self.get_value(context)
         if len(str(v)) == 0: return Type.NULL
         try:
@@ -158,6 +211,35 @@ class BinOpNode(AstNode):
 
     def __str__(self) -> str:
         return str(self.op.value)
+
+    def get_type(self, context) -> Type:
+        type1 = self.arg1.get_type(context)
+        type2 = self.arg2.get_type(context)
+        if type1 != type2:
+            raise exceptions.TypeMismatch('Type Mismatch ' + str(self.arg1) + ' and' + str(self.arg2))
+        return type1
+
+    def get_value(self, context): # -> STR | NUM
+        t = self.get_type(context)
+        v1 = self.arg1.get_value(context)
+        v2 = self.arg2.get_value(context)
+        if t == Type.NUM:
+            if self.op == BinOp.ADD:
+                return v1+v2
+            elif self.op == BinOp.MUL:
+                return v1*v2
+            elif self.op == BinOp.SUB:
+                return v1-v2
+            elif self.op == BinOp.DIV:
+                return v1/v2
+            elif self.op == BinOp.CON:
+                raise exceptions.InvalidOperator("Invalid operator" + str(self.op.value) + "for" + str(v1) + "and" + str(v2))
+        else:
+            if self.op == BinOp.CON:
+                return v1+v2
+            else:
+                raise exceptions.InvalidOperator(
+                    "Invalid operator" + str(self.op.value) + "for" + str(v1) + "and" + str(v2))
 
 
 class FuncSelectNode(AstNode):
@@ -267,8 +349,10 @@ class TableNode(AstNode):
     def __str__(self) -> str:
         return self.name + " " + str(self.alias) if self.alias else self.name
 
-    def get_value(self, context) -> Table:
-        return context.aliases[str(self.alias) if self.alias else self.name]
+    def get_value(self, context) -> VirtualTable:
+        t = VirtualTable()
+        t.createVTFromT(context.aliases[str(self.alias) if self.alias else self.name])
+        return t
 
 
 class FromNode(AstNode):
@@ -312,29 +396,35 @@ class JoinExprNode(AstNode):
     def __str__(self) -> str:
         return str(self.join)
 
-    def inner_join(self, context: QueryContext) -> Table:
-        table = []
-        for l1 in self.table1.get_value(context).table:
-            for l2 in self.table2.get_value(context).table:
-                line = l1.copy()
-                for key in self.table2.get_value(context).titles:
-                    line[key] = l2[key]
+    def inner_join(self, context: QueryContext) -> VirtualTable:
+        new_vt = VirtualTable()
+        vt1 = self.table1.get_value(context)
+        vt2 = self.table2.get_value(context)
+        for t in vt1.tables:
+            new_vt.tables.append(t)
+        for t in vt2.tables:
+            new_vt.tables.append(t)
+        for math_line1 in vt1.matched_list:
+            for math_line2 in vt2.matched_list:
                 context_on = ContextOn()
-                #context_on.tables[self.table1.get_value(context).name] = l1.copy()
-                context_on.tables[self.table1.name] = l1.copy()
-                if self.table1.alias:
-                    context_on.tables[str(self.table1.alias)] = l1.copy()
-                context_on.tables[self.table2.name] = l2.copy()
-                if self.table2.alias:
-                    context_on.tables[self.table2.alias] = l2.copy()
+                for index, num in enumerate(math_line1):
+                    for col_name, value in vt1.tables[index].table[num].items():
+                        v = Var(value, col_name, vt1.tables[index].name, context.get_alias_by_name(vt1.tables[index].name))
+                        context_on.vars.append(v)
+                for index, num in enumerate(math_line2):
+                    for col_name, value in vt2.tables[index].table[num].items():
+                        v = Var(value,col_name, vt2.tables[index].name, context.get_alias_by_name(vt2.tables[index].name))
+                        context_on.vars.append(v)
                 if self.on.get_value(context_on):
-                    table.append(line)
-        titles = []
-        titles.extend(self.table1.get_value(context).titles)
-        titles.extend(self.table2.get_value(context).titles)
-        return Table(self.table2.name + '_' + self.table1.name, titles, table)
+                    new_match_line = []
+                    for m in math_line1:
+                        new_match_line.append(m)
+                    for m in math_line2:
+                        new_match_line.append(m)
+                    new_vt.matched_list.append(new_match_line)
+        return new_vt
 
-    def get_value(self, context: QueryContext) -> Table:
+    def get_value(self, context: QueryContext) -> VirtualTable:
         return self.inner_join(context)
 
 
@@ -405,21 +495,20 @@ class QueryNode(AstNode):
     def __str__(self) -> str:
         return str("query")
 
-    def cartesian_product(self, table1: Table, table2: Table) -> Table:
-        table = []
-        for l1 in table1.table:
-            for l2 in table2.table:
-                line = l1.copy()
-                for key in table2.titles:
-                    line[key] = l2[key]
-                table.append(line)
-        titles = []
-        titles.extend(table1.titles)
-        titles.extend(table2.titles)
-        return Table(table2.name + '_' + table1.name, titles, table)
+    def cartesian_product(self, table1: VirtualTable, table2: VirtualTable) -> VirtualTable:
+        table = VirtualTable()
+        table.tables.extend(table1.tables)
+        table.tables.extend(table2.tables)
+        for ml1 in table1.matched_list:
+            for ml2 in table2.matched_list:
+                ml = []
+                ml.extend(ml1)
+                ml.extend(ml2)
+                table.matched_list.append(ml)
+        return table
 
 
-    def execute(self, context: QueryContext) -> Table:
+    def execute(self, context: QueryContext) -> VirtualTable:
         for child in self.childs:
             if isinstance(child, FromNode):
                 child.full_up_context_table(context) # заносим таблицы из from в контекст

@@ -30,6 +30,16 @@ data2 = [
 professions = Table('professions', data2)
 print(professions)
 
+data3 = [
+    ['Fio', 'Kurs'],
+    ['sirota', 1],
+    ['minin', 2]
+]
+
+lecturers = Table('lecturers', data3)
+print(lecturers)
+
+
 #def comp(arg1, arg2):
 #    return bool(random.randint(0, 1))
 
@@ -39,7 +49,7 @@ print(professions)
 prog = myparser.parse(
          '''
     SELECT DISTINCT to_Int(str(dfd + 2) * ('aaa' || qwe * 3))  , str(2) || (4 *2)
-    FROM students, professions p JOIN students s ON p.Age = s.Age
+    FROM students s JOIN professions p ON students.Age = 20
     WHERE (q = b OR asd > nj)
         AND q > e  
         AND (www = t OR fgk >= ANY ( SELECT * FROM students WHERE NOT EXISTS(SELECT tratr FROM sas;) ; ) )
@@ -47,4 +57,4 @@ prog = myparser.parse(
         ''')
 
 print(*prog.tree, sep=os.linesep)
-print(compilate([students, professions], prog))
+print(compilate([students, professions, lecturers], prog))
