@@ -4,6 +4,13 @@ from enum import Enum
 from table import Table
 import exceptions
 
+class Gruop:
+    def __init__(self, table_name: str, col_name: str, val):
+        self.table_name = table_name
+        self.column_name = col_name
+        self.value = val
+        self.matched_list = []
+
 class Var:
     def __init__(self, value, col_name: str, t_name: str, alias: str = ''):
         self.t_name = t_name
@@ -15,6 +22,7 @@ class VirtualTable:
     def __init__(self):
         self.tables = []
         self.matched_list = []
+        self.groups = []
 
     def createVTFromT(self, table: Table):
         self.tables = [table]
@@ -38,6 +46,14 @@ class VirtualTable:
             result += '\n'
         return result
 
+    def grops_contain(self, value):
+        for g in self.groups:
+            if g.value == value:
+                return g
+        return None
+
+
+
 class Type(Enum):
     STR = 1
     NUM = 2
@@ -56,6 +72,19 @@ class QueryContext:
             if t is self.aliases[name] and al != name:
                 return al
         return ''
+
+    def get_name_by_alias(self, alias:str) -> str:
+        if alias in self.db:  # это уже имя таблицы   ?(или алиас, который назван также как и одна из таблиц в бд не использующаяся в запросе)
+            return alias
+        for key, a in self.aliases.items():  # это точно алиас
+            if a is self.aliases[alias] and key != alias:
+                if key in self.db:
+                    return key
+
+    def get_name_by_col_name(self, col_name) -> str:
+        for key, a in self.aliases.items():
+            if col_name in a.titles:
+                return self.get_name_by_alias(key)
 
 
 class ContextOn:
@@ -171,18 +200,22 @@ class StrConstNode(AstNode):
 class ColumnNode(AstNode):
     def __init__(self, name: str):
         super().__init__()
-        self.name = str(name)
+        self.full_name = str(name)
+        if len(self.full_name.split('.')) == 1:
+            self.col_name = self.full_name
+            self.table_name = None
+        else:
+            self.table_name = self.full_name.split('.')[0]
+            self.col_name = self.full_name.split('.')[1]
 
     def __str__(self) -> str:
-        return str(self.name)
+        return str(self.full_name)
 
     def get_value(self, context: ContextOn):
-        if len(self.name.split('.')) == 1: # название стобца без названия таблицы
-            return context.find_by_col_name(self.name)
+        if not self.table_name:
+            return context.find_by_col_name(self.col_name)
         else:
-            table_name = self.name.split('.')[0]
-            col_name = self.name.split('.')[1]
-            return context.find_by_table_and_col(table_name, col_name)
+            return context.find_by_table_and_col(self.table_name, self.col_name)
 
     def get_type(self, context: ContextOn) -> Type:
         v = self.get_value(context)
@@ -525,6 +558,33 @@ class GroupByNode(AstNode):
     def __str__(self) -> str:
         return 'GROUP BY'
 
+    def get_value(self, context: QueryContext, vt: VirtualTable) -> VirtualTable:
+        col_name = self.column.col_name
+        if self.column.table_name:
+            table_name = context.get_name_by_alias(self.column.table_name)
+        else:
+            table_name = context.get_name_by_col_name(col_name)
+        for index, t in enumerate(vt.tables):
+            if t is context.aliases[table_name]:
+                index_table_in_VT = index
+                break
+        else:
+            pass #exception
+
+        for math_line in vt.matched_list:
+            val = vt.tables[index_table_in_VT].table[math_line[index_table_in_VT]][col_name]
+            group = vt.grops_contain(val)
+            if group:
+                group.matched_list.append(math_line)
+            else:
+                new_gr = Gruop(table_name, col_name, val)
+                new_gr.matched_list.append(math_line)
+                vt.groups.append(new_gr)
+        return vt
+
+
+
+
 class QueryNode(AstNode):
     def __init__(self, *blocks: Tuple):
         super().__init__()
@@ -561,5 +621,10 @@ class QueryNode(AstNode):
                 #return table
                 for child in self.childs:
                     if isinstance(child, WhereNode):
-                        table = child.get_value(context, table )
+                        table = child.get_value(context, table)
+
+                for child in self.childs:
+                    if isinstance(child, GroupByNode):
+                        table = child.get_value(context, table)
+
                 return table
