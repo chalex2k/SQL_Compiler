@@ -514,6 +514,16 @@ class WhereNode(AstNode):
 
 
 
+class GroupByNode(AstNode):
+    def __init__(self, group_by: str, column: ColumnNode):
+        self.column = column
+
+    @property
+    def childs(self) -> Tuple['Column']:
+        return self.column,
+
+    def __str__(self) -> str:
+        return 'GROUP BY'
 
 class QueryNode(AstNode):
     def __init__(self, *blocks: Tuple):

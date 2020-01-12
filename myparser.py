@@ -111,7 +111,15 @@ def make_parser():
   
     query = select
     """
-    query << select + from_ + pp.Optional(where) + ';'
+    #---------------------------------------------Блок GROUP BY----------------------------------------------
+    GROUP_BY = pp.Keyword('GROUP BY')
+
+    group_by = GROUP_BY + column
+
+
+
+
+    query << select + from_ + pp.Optional(where) + pp.Optional(group_by) + ';'
     start = query
 
 
