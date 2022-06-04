@@ -7,16 +7,16 @@ from compilator import compilate
 
 data = [
     ['Name', 'Surname', 'Age', 'Kurs'],
-    ['Alex', 'Chirkin', 19, 3],
-    ['Varya', 'Gospodarikova', 18, 3],
-    ['Lesya', 'Lipatova', 18, 1],
-    ['Lex', 'Kuduhov', 22, 5],
-    ['Alexander', 'Kozhuhov', 20, 3],
-    ['Nikolay', 'Paukov', 20, 3],
-    ['Vadim', 'Smagin', 18, 2],
-    ['Ivan', 'Zaborskih', 20, 2],
-    ['Olesya', 'Tranina', 21, 4],
-    ['Ruslan', 'Pogorelov', 20, 3]
+    ['Alexander', 'Alexandrov', 19, 3],
+    ['Ivan', 'Ivanov', 18, 3],
+    ['Petr', 'Petrov', 18, 1],
+    ['Alexey', 'Alexeev', 22, 5],
+    ['Sergey', 'Sergeev', 20, 3],
+    ['Nikolay', 'Nikolaev', 20, 3],
+    ['Vadim', 'Vadimov', 18, 2],
+    ['Andrey', 'Andreev', 20, 2],
+    ['Pavel', 'Pavlov', 21, 4],
+    ['Ruslan', 'Ruslanov', 20, 3]
 ]
 students = Table('students', data)
 print(students)
@@ -32,8 +32,8 @@ print(professions)
 
 data3 = [
     ['Fio', 'Kurs'],
-    ['sirota', 1],
-    ['minin', 2]
+    ['Ivan Sergeevich', 1],
+    ['Evgeniy Ivanovich', 2]
 ]
 
 lecturers = Table('lecturers', data3)
@@ -44,13 +44,13 @@ print(lecturers)
 #    return bool(random.randint(0, 1))
 
 #students.join(professions, comp)
-#print(students)   students.Surname = 'Chirkin' OR p.Age = 20
+#print(students)   students.Surname = 'Petrov' OR p.Age = 20
 
 prog = myparser.parse(
          '''
     SELECT DISTINCT to_Int(str(dfd + 2) * ('aaa' || qwe * 3))  , str(2) || (4 *2)
     FROM students s, professions p
-    WHERE s.Kurs = 3 OR Surname = 'Lipatova'
+    WHERE s.Kurs = 3 OR Surname = 'Alexandrov'
     GROUP BY Kurs
     ;
         ''')
